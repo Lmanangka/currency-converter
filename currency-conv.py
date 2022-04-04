@@ -5,9 +5,9 @@ Created: 04/04/2022
 
 import sys
 import requests
-import json
+
 URL = 'https://v6.exchangerate-api.com/v6/'
-API_KEY = '5ead311e137e819416723196' 
+API_KEY = 'PUT YOUR API KEY HERE' 
 OPT = sys.argv
 
 def help_text():
