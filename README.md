@@ -42,5 +42,6 @@ upper or lower case are ignored, it will convert 5 USD to Indonesia IDR.
 
 ## Credits
 
+- [Build Command-line Interfaces with argparse](https://realpython.com/command-line-interfaces-python-argparse/)
 - [Make a good CLI interface and using API](https://realpython.com/build-a-python-weather-app-cli/)
 - [Exchange rate API](https://www.exchangerate-api.com/)
