@@ -1,81 +1,87 @@
-'''
-Author  : Leo Manangka
-Created : 04/04/2022
-Revision: 12/04/2022
-'''
+"""
+Author  : Leonardo Rudolf Manangka
+Created : 09 January 2023
+"""
 
+import argparse
 import sys
-import requests
+import json
+#from pprint import pp
+from configparser import ConfigParser
+from urllib import request, error
+import style
 
-OPT = sys.argv
+BASE_EXCHAGE_RATE_URL = "https://v6.exchangerate-api.com/v6"
 
-def help_text():
-    print(f'''
-    Usage:
+def _get_api_key():
+    """
+    A function for retrive a API key from api_key.ini
+    """
+    config = ConfigParser()
+    config.read("api_key.ini")
+    return config["exchangerate"]["api_key"]
 
-    pyhton3 {OPT[0]} [OPTION] [currency1] [currency2] [amount]
+def read_user_input():
+    """
+    A function to read a user input for amount and types of currencies.
+    """
+    parser = argparse.ArgumentParser(prog="currency-conv",
+            description="Currency converter using an API from exchangerate-api")
+    parser.add_argument("amount", nargs=1, type=int, help="Enter the amount of money")
+    parser.add_argument("currency", nargs=2, type=str, help="Enter the currencies types")
+    return parser.parse_args()
 
-    Option:
-      -l | --list       Show latest currencies conversion rates
-      -e | -- exchange  Show exchange result between currency1 and currency2
-      -h | --help       Show help text
-    ''')
+def exchange_rate_query(currency1, currency2, amount):
+    """
+    A function to build a API endpoint conversion require amount of money and
+    types of currencies.
+    """
+    api_key = _get_api_key()
+    url = (f"{BASE_EXCHAGE_RATE_URL}/{api_key}/pair/{currency1.upper()}/{currency2.upper()}/{amount}")
+    return url
 
-class Currency:
-    '''
-    make class name currency
-    '''
-    def __init__(self):
-        self.URL = 'https://v6.exchangerate-api.com/v6/'
-        self.API_KEY = '5ead311e137e819416723196'
-
-    def list_currenciesRate(self):
-        '''
-        create a function to show currencies conversion rates based on USD
-        '''
-        endpoint = f'{self.API_KEY}/latest/USD'
-        resp = requests.get(f'{self.URL}{endpoint}')
-        data = resp.json()
-        return data
-
-    def exchange(self, currency1=None, currency2=None, amount=None):
-        '''
-        create function to show exchange result between currency1 and currency2
-        '''
-        endpoint = f'{self.API_KEY}/pair/{currency1}/{currency2}/{amount}'
-        if currency1 == None or currency2 == None or amount == None:
-            help_text()
-            sys.exit()
-        else:
-            resp = requests.get(f'{self.URL}{endpoint}')
-            data = resp.json()
-            data = f'{currency1} to {currency2}: {round(data["conversion_result"],2)}\nlast update: {data["time_last_update_utc"]}'
-            return data
-
-if __name__=='__main__':
-    currency = Currency()
+def get_exchange_rate_data(url_query):
+    """
+    A function to get a data from API end point such as conversion rate,
+    conversion result, and time last update, etc.
+    """
     try:
-        if len(OPT) < 2:
-            help_text()
-            sys.exit()
-
-        elif OPT[1] in {'-l', '--list'}:
-            #Convert dictionary in json to list and sorted
-            conversion_rates = list(currency.list_currenciesRate()["conversion_rates"].items())
-            conversion_rates.sort()
-            #print name and value in beautiful format
-            for code, val in conversion_rates:
-                print(f'{code}:', round(val,2))
-            print(f'last update: {currency.list_currenciesRate()["time_last_update_utc"]}')
-
-        elif OPT[1] in {'-e', '--exchange'}:
-            #print conversion result and last update
-            print(currency.exchange(str(OPT[2]), str(OPT[3]), OPT[4]))
-
+        resp = request.urlopen(url_query)
+    except error.HTTPError as http_error:
+        if http_error.code == 401:
+            sys.exit("Access denied, check your API key!!")
+        elif http_error.code == 404:
+            sys.exit("Can't find data for this currencies.")
         else:
-            help_text()
+            sys.exit("Something went wrong...({http_error.code})")
+    data = resp.read()
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        sys.exit("Couldn't read the server response")
 
-    except KeyboardInterrupt:
-        sys.exit()
-    finally:
-        sys.exit()
+def display_data(exchange_rate_data):
+    """
+    A function to display a data and make it more easy to read for user, such
+    as conversion rate, conversion result, and time last update.
+    """
+    conv_rate = exchange_rate_data["conversion_rate"]
+    conv_res = exchange_rate_data["conversion_result"]
+    time = exchange_rate_data["time_last_update_utc"]
+
+    style.change_color(style.REVERSE)
+    style.change_color(style.WHITE)
+    print(f"{round(conv_rate, 2):^{style.PADDING}}", end="")
+    style.change_color(style.GREEN)
+    print(f"{round(conv_res, 2):^{style.PADDING}}", end="")
+    style.change_color(style.CYAN)
+    print(f"{time}")
+    style.change_color(style.RESET)
+
+if __name__=="__main__":
+    user_input = read_user_input()
+    url_query = exchange_rate_query(user_input.currency[0],
+            user_input.currency[1], user_input.amount[0])
+    exchange_rate_data = get_exchange_rate_data(url_query)
+#    pp(exchange_rate_data)
+    display_data(exchange_rate_data)
